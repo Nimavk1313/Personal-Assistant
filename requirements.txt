@@ -1,0 +1,11 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-dotenv>=1.0.1
+cerebras-cloud-sdk>=1.7.0
+mss>=9.0.1
+pillow>=10.4.0
+pytesseract>=0.3.10
+pynput>=1.7.7
+psutil>=5.9.8
+ddgs>=9.6.0
+
