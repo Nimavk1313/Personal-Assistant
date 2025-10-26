@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 from relevance_scorer import relevance_scorer, ContentType
+from content_extractor import ContentExtractor, ContentAnalysis
 
 
 class RelevanceLevel(Enum):
@@ -40,6 +41,9 @@ class DataFusion:
     """Handles intelligent fusion of OCR and web search data."""
     
     def __init__(self):
+        # Initialize content extractor for enhanced analysis
+        self.content_extractor = ContentExtractor()
+        
         # Keywords that indicate screen-related queries
         self.screen_keywords = {
             'screen', 'display', 'window', 'button', 'click', 'interface', 'ui', 'menu',
@@ -149,10 +153,18 @@ class DataFusion:
     ) -> FusedContext:
         """Intelligently fuse multiple context sources based on relevance."""
         
-        # Prepare context info for advanced scoring
-        context_info = {"window_info": window_info} if window_info else {}
+        # First, perform enhanced content analysis on OCR text
+        ocr_analysis = None
+        if screen_text and screen_text.strip():
+            ocr_analysis = self.content_extractor.analyze_content(screen_text, query)
         
-        # Analyze relevance of each context source
+        # Prepare enhanced context info including OCR analysis
+        context_info = {
+            "window_info": window_info,
+            "ocr_analysis": ocr_analysis
+        }
+        
+        # Analyze relevance of each context source with enhanced information
         screen_relevance = self.analyze_relevance(query, screen_text, "screen", context_info)
         web_relevance = self.analyze_relevance(query, web_results, "web", context_info)
         window_relevance = self.analyze_relevance(query, window_info, "window", context_info)

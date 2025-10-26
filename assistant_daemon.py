@@ -275,8 +275,22 @@ class AssistantDaemon:
                 max_results = web_params.get('max_results', 5)
                 timelimit = web_params.get('timelimit', None)
                 
+                # Generate enhanced search query if smart mode is enabled
+                search_query = query
+                if use_smart:
+                    # Analyze OCR content if available for better search query
+                    ocr_analysis = None
+                    if screen_text and screen_text.strip():
+                        ocr_analysis = smart_analyzer.analyze_ocr_content(screen_text, query)
+                    
+                    # Get enhanced search query
+                    enhanced_query = smart_analyzer.get_enhanced_search_query(query, ocr_analysis)
+                    if enhanced_query != query:
+                        search_query = enhanced_query
+                        self._response_queue.put(f"[Enhanced search query: '{search_query}']\n")
+                
                 web_results = web_searcher.search_formatted(
-                    query, 
+                    search_query, 
                     max_results=max_results,
                     timelimit=timelimit
                 )

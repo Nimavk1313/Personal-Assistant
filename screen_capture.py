@@ -136,7 +136,7 @@ class ScreenCapture:
             return False
     
     def get_recent_ocr_text(self, seconds: int = None, max_chars: int = None) -> str:
-        """Get recent OCR text."""
+        """Get recent OCR text with automatic cleanup of old entries."""
         if seconds is None:
             seconds = config.ocr_timeout
         if max_chars is None:
@@ -146,10 +146,18 @@ class ScreenCapture:
         chunks: List[str] = []
         seen = set()
         
+        # Clean up old entries from the deque while iterating
+        valid_entries = []
         for ts, txt in list(self._recent_ocr):
-            if ts < cutoff:
-                continue
+            if ts >= cutoff:
+                valid_entries.append((ts, txt))
             
+        # Update the deque with only valid entries
+        self._recent_ocr.clear()
+        self._recent_ocr.extend(valid_entries)
+        
+        # Process valid entries for transcript
+        for ts, txt in valid_entries:
             snippet = txt.strip()
             if not snippet:
                 continue
@@ -189,3 +197,15 @@ class ScreenCapture:
         self._stats.frames = 0
         self._stats.ocr_events = 0
         self._stats.last_error = ""
+    
+    def refresh_transcript(self) -> None:
+        """Force refresh transcript by clearing old entries and keeping only very recent ones."""
+        cutoff = datetime.utcnow() - timedelta(seconds=3)  # Keep only last 3 seconds
+        valid_entries = []
+        
+        for ts, txt in list(self._recent_ocr):
+            if ts >= cutoff:
+                valid_entries.append((ts, txt))
+        
+        self._recent_ocr.clear()
+        self._recent_ocr.extend(valid_entries)

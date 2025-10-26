@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 from performance_optimizer import performance_optimizer
+from content_extractor import ContentExtractor, ContentAnalysis
 
 
 class QueryType(Enum):
@@ -43,6 +44,9 @@ class SmartContextAnalyzer:
     """Analyzes queries to determine optimal context sources."""
     
     def __init__(self):
+        # Initialize content extractor for enhanced OCR analysis
+        self.content_extractor = ContentExtractor()
+        
         # Keywords that indicate screen-related queries
         self.screen_keywords = {
             'screen', 'display', 'window', 'application', 'app', 'interface', 'ui', 'gui',
@@ -86,6 +90,34 @@ class SmartContextAnalyzer:
             'good morning', 'good afternoon', 'good evening', 'goodbye', 'bye',
             'how are you', 'nice to meet', 'pleasure', 'welcome'
         }
+    
+    def analyze_ocr_content(self, ocr_text: str, user_query: str = "") -> ContentAnalysis:
+        """
+        Analyze OCR content to extract key information and generate focused insights.
+        
+        Args:
+            ocr_text: Text extracted from OCR
+            user_query: User's query for context
+            
+        Returns:
+            ContentAnalysis with extracted information
+        """
+        return self.content_extractor.analyze_content(ocr_text, user_query)
+    
+    def get_enhanced_search_query(self, user_query: str, ocr_analysis: Optional[ContentAnalysis] = None) -> str:
+        """
+        Generate an enhanced search query based on user query and OCR analysis.
+        
+        Args:
+            user_query: Original user query
+            ocr_analysis: Optional OCR content analysis
+            
+        Returns:
+            Enhanced search query
+        """
+        if ocr_analysis:
+            return self.content_extractor.get_focused_search_query(ocr_analysis, user_query)
+        return user_query
     
     def analyze_query(self, query: str, window_info: str = "", has_live_ocr: bool = False) -> ContextDecision:
         """

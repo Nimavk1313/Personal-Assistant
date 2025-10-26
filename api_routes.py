@@ -5,13 +5,14 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from models import (
     ChatRequest, ChatResponse, StatusResponse, TranscriptResponse, 
-    LiveToggleResponse
+    LiveToggleResponse, AssistantConfig
 )
 from screen_capture import ScreenCapture
 from window_utils import window_manager
 from web_search import web_searcher
 from ai_client import ai_client
 from smart_context_analyzer import smart_analyzer
+from conversation_memory import get_conversation_memory
 
 
 class APIRouterManager:
@@ -142,6 +143,15 @@ class APIRouterManager:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e)) from e
         
+        @self.router.post("/transcript/refresh")
+        async def refresh_transcript():
+            """Force refresh transcript by clearing old data."""
+            try:
+                self.screen_capture.refresh_transcript()
+                return {"status": "success", "message": "Transcript refreshed"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
         @self.router.get("/health")
         async def health_check():
             """Health check endpoint."""
@@ -167,6 +177,78 @@ class APIRouterManager:
                         "ocr": self.screen_capture.pytesseract is not None
                     }
                 }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.get("/config/assistant")
+        async def get_assistant_config():
+            """Get detailed assistant configuration."""
+            try:
+                config = ai_client.get_config()
+                memory = get_conversation_memory(config)
+                return {
+                    "config": config.dict(),
+                    "memory_stats": memory.get_memory_stats()
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.post("/config/assistant")
+        async def update_assistant_config(new_config: AssistantConfig):
+            """Update assistant configuration."""
+            try:
+                ai_client.update_config(new_config)
+                return {"status": "success", "message": "Configuration updated"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.get("/conversation/memory/{session_id}")
+        async def get_conversation_memory_info(session_id: str):
+            """Get conversation memory information for a session."""
+            try:
+                config = ai_client.get_config()
+                memory = get_conversation_memory(config)
+                history = memory.get_conversation_history(session_id)
+                summary = memory.get_context_summary(session_id)
+                
+                return {
+                    "session_id": session_id,
+                    "message_count": len(history),
+                    "context_summary": summary,
+                    "recent_messages": history[-5:] if history else []  # Last 5 messages
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.delete("/conversation/memory/{session_id}")
+        async def clear_conversation_memory(session_id: str):
+            """Clear conversation memory for a session."""
+            try:
+                config = ai_client.get_config()
+                memory = get_conversation_memory(config)
+                memory.clear_session(session_id)
+                return {"status": "success", "message": f"Memory cleared for session {session_id}"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.delete("/conversation/memory")
+        async def clear_all_conversation_memory():
+            """Clear all conversation memory."""
+            try:
+                config = ai_client.get_config()
+                memory = get_conversation_memory(config)
+                memory.clear_all_sessions()
+                return {"status": "success", "message": "All conversation memory cleared"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+        
+        @self.router.get("/conversation/stats")
+        async def get_conversation_stats():
+            """Get conversation memory statistics."""
+            try:
+                config = ai_client.get_config()
+                memory = get_conversation_memory(config)
+                return memory.get_memory_stats()
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e)) from e
         
