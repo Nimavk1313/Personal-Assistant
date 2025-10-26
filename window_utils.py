@@ -1,22 +1,49 @@
 """
 Window management and process information utilities for the Personal Assistant application.
 """
-import ctypes
-import ctypes.wintypes as wintypes
+import platform
 import psutil
 from typing import Optional
 from models import WindowInfo
 
+# Platform-specific imports
+system = platform.system().lower()
+if system == "windows":
+    import ctypes
+    import ctypes.wintypes as wintypes
+elif system == "darwin":  # macOS
+    try:
+        from AppKit import NSWorkspace, NSApplication
+        from Quartz import CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+    except ImportError:
+        # Fallback if AppKit/Quartz not available
+        NSWorkspace = None
+        NSApplication = None
+        CGWindowListCopyWindowInfo = None
+
 
 class WindowManager:
-    """Handles window management and process information on Windows."""
+    """Handles window management and process information across platforms."""
     
     def __init__(self):
-        self.user32 = ctypes.windll.user32
-        self.kernel32 = ctypes.windll.kernel32
+        self.system = platform.system().lower()
+        if self.system == "windows":
+            self.user32 = ctypes.windll.user32
+            self.kernel32 = ctypes.windll.kernel32
+        elif self.system == "darwin":
+            self.workspace = NSWorkspace.sharedWorkspace() if NSWorkspace else None
     
     def get_active_window_info(self) -> WindowInfo:
         """Get information about the currently active window."""
+        if self.system == "windows":
+            return self._get_active_window_info_windows()
+        elif self.system == "darwin":
+            return self._get_active_window_info_macos()
+        else:
+            return WindowInfo(title="", process_name="")
+    
+    def _get_active_window_info_windows(self) -> WindowInfo:
+        """Get active window info on Windows."""
         try:
             hwnd = self.user32.GetForegroundWindow()
             if not hwnd:
@@ -48,46 +75,52 @@ class WindowManager:
                 process_name=process_name,
                 pid=pid.value if pid.value else None
             )
+        except Exception:
+            return WindowInfo(title="", process_name="")
+    
+    def _get_active_window_info_macos(self) -> WindowInfo:
+        """Get active window info on macOS."""
+        try:
+            if not self.workspace:
+                return WindowInfo(title="", process_name="")
             
+            # Get the frontmost application
+            frontmost_app = self.workspace.frontmostApplication()
+            if not frontmost_app:
+                return WindowInfo(title="", process_name="")
+            
+            app_name = frontmost_app.localizedName() or ""
+            pid = frontmost_app.processIdentifier()
+            
+            # Try to get window title from window list
+            title = ""
+            if CGWindowListCopyWindowInfo:
+                window_list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
+                for window in window_list:
+                    window_pid = window.get('kCGWindowOwnerPID', 0)
+                    if window_pid == pid:
+                        window_title = window.get('kCGWindowName', '')
+                        if window_title:
+                            title = window_title
+                            break
+            
+            return WindowInfo(
+                title=title,
+                process_name=app_name,
+                pid=pid if pid else None
+            )
         except Exception:
             return WindowInfo(title="", process_name="")
     
     def get_active_window_title(self) -> str:
         """Get just the active window title."""
-        try:
-            hwnd = self.user32.GetForegroundWindow()
-            if not hwnd:
-                return ""
-            
-            length = self.user32.GetWindowTextLengthW(hwnd)
-            if length == 0:
-                return ""
-            
-            buf = ctypes.create_unicode_buffer(length + 1)
-            self.user32.GetWindowTextW(hwnd, buf, length + 1)
-            return buf.value
-            
-        except Exception:
-            return ""
+        window_info = self.get_active_window_info()
+        return window_info.title
     
     def get_active_process_name(self) -> str:
         """Get just the active process name."""
-        try:
-            hwnd = self.user32.GetForegroundWindow()
-            if not hwnd:
-                return ""
-            
-            pid = wintypes.DWORD()
-            self.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-            
-            if not pid.value:
-                return ""
-            
-            p = psutil.Process(pid.value)
-            return p.name()
-            
-        except Exception:
-            return ""
+        window_info = self.get_active_window_info()
+        return window_info.process_name
     
     def format_window_info(self, window_info: WindowInfo) -> str:
         """Format window information as a string."""

@@ -31,11 +31,32 @@ class ScreenCapture:
         # Set tesseract path explicitly if available
         if self.pytesseract:
             import os
-            tesseract_paths = [
-                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-                "tesseract"  # fallback to PATH
-            ]
+            import platform
+            
+            # Platform-specific tesseract paths
+            system = platform.system().lower()
+            tesseract_paths = []
+            
+            if system == "windows":
+                tesseract_paths = [
+                    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                ]
+            elif system == "darwin":  # macOS
+                tesseract_paths = [
+                    "/usr/local/bin/tesseract",
+                    "/opt/homebrew/bin/tesseract",
+                    "/usr/bin/tesseract",
+                ]
+            elif system == "linux":
+                tesseract_paths = [
+                    "/usr/bin/tesseract",
+                    "/usr/local/bin/tesseract",
+                ]
+            
+            # Add fallback to PATH
+            tesseract_paths.append("tesseract")
+            
             for path in tesseract_paths:
                 if os.path.exists(path) or path == "tesseract":
                     self.pytesseract.pytesseract.tesseract_cmd = path

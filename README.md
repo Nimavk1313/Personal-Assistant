@@ -6,16 +6,42 @@ This project provides:
 - A simple web frontend for browser-based interaction.
 
 ### Requirements
-- Windows 10/11
+- **Windows**: Windows 10/11
+- **macOS**: macOS 10.15+ (Catalina or later)
+- **Linux**: Most modern distributions (limited window management features)
 - Python 3.10+
 - A Cerebras API key
+
+### Platform-Specific Setup
+
+#### Windows
+- Tesseract OCR will be automatically detected from common installation paths
+- Full window management and screen capture support
+
+#### macOS
+- Install Tesseract OCR via Homebrew: `brew install tesseract`
+- The app will automatically install required macOS frameworks (AppKit, Quartz)
+- Grant necessary permissions for screen recording and accessibility when prompted
+
+#### Linux
+- Install Tesseract OCR via package manager: `sudo apt install tesseract-ocr` (Ubuntu/Debian)
+- Limited window management features available
 
 ### Install
 1. Clone or copy this folder.
 2. Create a virtual environment and install deps:
+
+**Windows:**
 ```bash
 python -m venv .venv
-.venv\\Scripts\\activate
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**macOS/Linux:**
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 3. Create a `.env` in the project root:
@@ -30,8 +56,16 @@ ASSISTANT_TOP_P=0.9
 ```
 
 ### Run the backend server
+
+**Windows:**
 ```bash
-.venv\\Scripts\\activate
+.venv\Scripts\activate
+python backend.py
+```
+
+**macOS/Linux:**
+```bash
+source .venv/bin/activate
 python backend.py
 ```
 Then open http://localhost:8000 in your browser.
@@ -43,11 +77,21 @@ Features:
 - Web search integration
 - System-wide hotkeys via daemon
 
-### Run the system-wide assistant (Windows)
+### Run the system-wide assistant
+
+**Windows:**
 ```bash
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 python assistant_daemon.py
 ```
+
+**macOS/Linux:**
+```bash
+source .venv/bin/activate
+python assistant_daemon.py
+```
+
+Note: On macOS, you may need to grant accessibility permissions when prompted.
 
 Hotkeys:
 - Ctrl+Alt+P: open prompt anywhere
